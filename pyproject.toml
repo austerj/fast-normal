@@ -6,6 +6,7 @@ authors = ["austerj"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
+numba = "^0.61.0"
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
@@ -15,6 +16,7 @@ flake8 = "^5.0.4"
 isort = "^5.10.1"
 mypy = "^0.971"
 ipython = "^8.6.0"
+matplotlib = "^3.10.0"
 
 [tool.black]
 exclude = "(.venv)"
