@@ -5,7 +5,7 @@ description = ""
 authors = ["austerj"]
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.13"
 numba = "^0.61.0"
 
 [tool.poetry.dev-dependencies]
