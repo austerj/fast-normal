@@ -7,6 +7,8 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
+from fastnorm import OUT_PATH
+
 # typed subplots (flattening dimensions of length 1)
 ShareType = bool | typing.Literal["none", "all", "row", "col"]
 
@@ -122,15 +124,14 @@ def grid(
     return f, tuple(ax for axs in axs_ for ax in axs)
 
 
-def pdfs(
-    path: str,
+def density(
     samples: dict[str, np.ndarray],
     bins: int,
-    target_pdf: typing.Callable[..., np.ndarray] | None = None,
+    ref: typing.Callable[..., np.ndarray] | None = None,
     xlim: tuple[float, float] | None = None,
     ylim: tuple[float, float] | None = None,
     **kwargs,
-) -> None:
+) -> Figure:
     f, axs = grid(len(samples), **kwargs)
 
     for i, (name, s) in enumerate(samples.items()):
@@ -140,14 +141,17 @@ def pdfs(
             axs[i].set_xlim(*xlim)
         if ylim:
             axs[i].set_ylim(*ylim)
-        # plot target distribution
-        if target_pdf:
+        # plot reference density
+        if ref:
             x_min, x_max = axs[i].get_xlim()
             x = np.linspace(x_min, x_max, num=100)
-            axs[i].plot(x, target_pdf(x), linestyle=":", color="C3", linewidth=2)
-
-    if not os.path.isdir(path):
-        os.mkdir(path)
+            axs[i].plot(x, ref(x), linestyle=":", color="C3", linewidth=2)
 
     f.tight_layout()
-    f.savefig(path)
+    return f
+
+
+def savefig(f: Figure, fname: str) -> None:
+    if not os.path.isdir(OUT_PATH):
+        os.mkdir(OUT_PATH)
+    f.savefig(OUT_PATH / fname)
