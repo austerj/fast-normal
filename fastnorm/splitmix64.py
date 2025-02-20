@@ -31,14 +31,19 @@ def _fill_array_ints(array: np.ndarray, seed: int) -> int:
     return seed
 
 
+@nb.jit(nb.float64(nb.uint64))
+def to_float(n: int) -> float:
+    """Get float in [0, 1) from 53 highest bits of a 64-bit unsigned integer."""
+    # see https://prng.di.unimi.it/ (Generating uniform doubles in the unit interval)
+    return nb.float64((n >> 11) * 2 ** (-53))
+
+
 @nb.jit(nb.float64(nb.float64[:], nb.uint64), boundscheck=False)
 def _fill_array_floats(array: np.ndarray, seed: int) -> int:
     """Fill array in-place with uniform 64-bit floats in [0,1) and return latest seed."""
     for i in range(array.shape[0]):
         seed, n = _step(seed)
-        # use highest 53 bits of unsigned int for float in [0, 1)
-        # see https://prng.di.unimi.it/ (Generating uniform doubles in the unit interval)
-        array[i] = nb.float64((n >> 11) * 2 ** (-53))
+        array[i] = to_float(n)
     return seed
 
 
