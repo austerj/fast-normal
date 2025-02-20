@@ -8,6 +8,8 @@ import numba as nb
 import numpy as np
 from numba import types
 
+from fastnorm.types import Vector
+
 
 @nb.jit(types.UniTuple(nb.uint64, 2)(nb.uint64))
 def _step(seed: int) -> tuple[int, int]:
@@ -41,7 +43,7 @@ def _fill_array_floats(array: np.ndarray, seed: int) -> int:
 
 
 @nb.jit(nb.uint64[:](nb.uint64, nb.uint64))
-def sample_ints(nsamples: int, seed: int) -> np.ndarray[tuple[int], np.dtype[np.uint64]]:
+def sample_ints(nsamples: int, seed: int) -> Vector[np.uint64]:
     """Sample an array of uniform 64-bit unsigned integers."""
     array = np.empty(nsamples, dtype=np.uint64)
     _fill_array_ints(array, seed)
@@ -49,7 +51,7 @@ def sample_ints(nsamples: int, seed: int) -> np.ndarray[tuple[int], np.dtype[np.
 
 
 @nb.jit(nb.float64[:](nb.uint64, nb.uint64))
-def sample_floats(nsamples: int, seed: int) -> np.ndarray[tuple[int], np.dtype[np.float64]]:
+def sample_floats(nsamples: int, seed: int) -> Vector[np.float64]:
     """Sample an array of uniform 64-bit floats in [0, 1)."""
     array = np.empty(nsamples, dtype=np.float64)
     _fill_array_floats(array, seed)

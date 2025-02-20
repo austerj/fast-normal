@@ -10,6 +10,7 @@ import numba as nb
 import numpy as np
 
 from fastnorm import splitmix64
+from fastnorm.types import Vector
 
 
 @nb.jit(nb.void(nb.float64[:]), boundscheck=False, fastmath=True)
@@ -25,7 +26,7 @@ def _transform_array(array: np.ndarray) -> None:
 
 
 @nb.jit(nb.float64[:](nb.uint64, nb.uint64))
-def sample(nsamples: int, seed: int) -> np.ndarray[tuple[int], np.dtype[np.float64]]:
+def sample(nsamples: int, seed: int) -> Vector[np.float64]:
     """Sample an array of standard normal 64-bit floats."""
     _nsamples = 2 * math.ceil(nsamples / 2)  # generate extra sample if nsamples is not divisible by 2
     array = splitmix64.sample_floats(_nsamples, seed)
