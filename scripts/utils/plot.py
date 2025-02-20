@@ -135,7 +135,7 @@ def density(
     f, axs = grid(len(samples), **kwargs)
 
     for i, (name, s) in enumerate(samples.items()):
-        axs[i].hist(s, color="C0", bins=bins, density=True)
+        axs[i].hist(s, color="C0", bins=bins, density=True, histtype="stepfilled")
         axs[i].set_title(name)
         if xlim:
             axs[i].set_xlim(*xlim)
