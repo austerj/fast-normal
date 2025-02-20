@@ -9,7 +9,6 @@ import numpy as np
 from numba import types
 
 
-
 @nb.jit(types.UniTuple(nb.uint64, 2)(nb.uint64))
 def _step(seed: int) -> tuple[int, int]:
     """Generate uniform 64-bit unsigned integer and return incremented seed and resulting value."""
@@ -30,7 +29,8 @@ def fill_array(array: np.ndarray, seed: int) -> int:
     return seed
 
 
-def sample(nsamples: int, seed: int = 0) -> np.ndarray[tuple[int], np.dtype[np.uint64]]:
+@nb.jit(nb.uint64[:](nb.uint64, nb.uint64))
+def sample(nsamples: int, seed: int) -> np.ndarray[tuple[int], np.dtype[np.uint64]]:
     """Sample an array of uniform 64-bit unsigned integers."""
     array = np.empty(nsamples, dtype=np.uint64)
     fill_array(array, seed)
