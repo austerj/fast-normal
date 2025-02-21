@@ -19,19 +19,18 @@ def _invert_cdf(npartitions: int, qmax: float) -> Vector[np.float64]:
     return stats.norm.ppf([0.5 + i / (npartitions - 1) * (qmax - 0.5) for i in range(npartitions)])
 
 
-def _sampler_from_ints(npartitions: int, qmax: float):
-    """Generate sampling function for approximately standard normal from uniform 64-bit unsigned integers."""
+def _filler_from_ints(npartitions: int, qmax: float):
+    """Generate filler function for approximately standard normal from uniform 64-bit unsigned integers."""
     if npartitions > 2**10:
         raise ValueError("Number of partitions must fit within 10 bits")
 
     table = _invert_cdf(npartitions + 1, qmax)
 
     # NOTE: taking uint64 array as input so this can be benchmarked independently of the bit generator
-    @nb.jit(nb.float64[:](nb.uint64[:]), boundscheck=False, fastmath=True)
-    def sample_from_ints(ints: Vector[np.uint64]) -> Vector[np.float64]:
-        """Sample an array of approximately standard normal 64-bit floats from array of 64-bit unsigned integers."""
+    @nb.jit(nb.void(nb.float64[:], nb.uint64[:]), boundscheck=False, fastmath=True)
+    def fill_from_ints(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
+        """Fill array with approximately standard normal 64-bit floats from array of 64-bit unsigned integers."""
         nsamples = ints.shape[0]
-        z = np.empty(nsamples, dtype=np.float64)
         for i in range(nsamples):
             n = ints[i]
             # truncate to lowest 11 bits, then remove lowest bit (sign)
@@ -46,19 +45,20 @@ def _sampler_from_ints(npartitions: int, qmax: float):
             # retrieve sign from first bit
             is_negative = bool(n << (64 - 1))
             z[i] = (-is_negative + (not is_negative)) * abs_z  # equivalent: -abs_z if is_negative else abs_z
-        return z
 
-    return sample_from_ints
+    return fill_from_ints
 
 
 def sampler(npartitions: int, qmax: float):
     """Generate sampling function of approximately standard normal 64-bit floats."""
-    sample_from_ints = _sampler_from_ints(npartitions, qmax)
+    fill_from_ints = _filler_from_ints(npartitions, qmax)
 
     @nb.jit(nb.float64[:](nb.uint64, nb.uint64))
     def sample(nsamples: int, seed: int) -> Vector[np.float64]:
         """Sample an array of approximately standard normal 64-bit floats."""
         ints = splitmix64.sample_ints(nsamples, seed)
-        return sample_from_ints(ints)
+        samples = np.empty(nsamples, dtype=np.float64)
+        fill_from_ints(samples, ints)
+        return samples
 
     return sample
