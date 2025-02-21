@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from fastnorm.norm import box_muller, fast
+from fastnorm.norm import box_muller, lookup
 
 MGF_VALS = [math.exp(i**2 / 2) for i in range(3)]
 
@@ -26,7 +26,7 @@ def estimate_mgf(array: np.ndarray, i: int):
 def test_mgf():
     npartitions, qmax = 1024, 0.99999
     nsamples = 5_000_000
-    samples = fast.sampler(npartitions, qmax)(nsamples, seed=0)
+    samples = lookup.sampler(npartitions, qmax)(nsamples, seed=0)
 
     # passes first and second MGF
     for i, moment in enumerate(MGF_VALS[:2]):

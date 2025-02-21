@@ -1,5 +1,5 @@
 """
-Fast generator of approximately standard normal floats via truncated distribution lookups.
+Generator of approximately standard normal floats via truncated distribution lookups.
 
 See {TODO: link to article}
 """
