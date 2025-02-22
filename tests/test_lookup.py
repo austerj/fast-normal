@@ -24,9 +24,9 @@ def estimate_mgf(array: np.ndarray, i: int):
 
 
 def test_mgf():
-    npartitions, qmax = 1024, 0.99999
+    qmax = 0.99999
     nsamples = 5_000_000
-    samples = lookup.sampler(npartitions, qmax)(nsamples, seed=0)
+    samples = lookup.sampler(qmax)(nsamples, seed=0)
 
     # passes first and second MGF
     for i, moment in enumerate(MGF_VALS[:2]):
@@ -35,7 +35,7 @@ def test_mgf():
     # expectedly FAILS third MGF value - cannot capture tail behavior even with high samples!
     assert estimate_mgf(samples, 2) != pytest.approx(MGF_VALS[2], rel=1e-2)
 
-    # when exclude tail samples, the third MGF estimate matches box-muller
+    # when excluding tail samples, the third MGF estimate matches box-muller
     qrestrict = 0.999
     bm_samples = restrict(box_muller.sample(nsamples, seed=0), qrestrict)
     assert estimate_mgf(restrict(samples, qrestrict), 2) == pytest.approx(estimate_mgf(bm_samples, 2), rel=1e-2)
