@@ -131,7 +131,7 @@ def density(
     xlim: tuple[float, float] | None = None,
     ylim: tuple[float, float] | None = None,
     **kwargs,
-) -> Figure:
+) -> tuple[Figure, tuple[Axes, ...]]:
     f, axs = grid(len(samples), **kwargs)
 
     for i, (name, s) in enumerate(samples.items()):
@@ -148,7 +148,7 @@ def density(
             axs[i].plot(x, ref(x), linestyle=":", color="C3", linewidth=2)
 
     f.tight_layout()
-    return f
+    return f, axs
 
 
 def savefig(f: Figure, fname: str) -> None:
