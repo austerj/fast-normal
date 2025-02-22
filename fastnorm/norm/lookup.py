@@ -27,22 +27,21 @@ def _filler_from_ints(qmax: float, exponent: int = _DEFAULT_EXPONENT):
         raise ValueError("Exponent must be strictly between 0 and 10")
 
     # precompute lookup table of quantiles
-    npartitions = 2**exponent
-    nsteps = npartitions + 1
-    quantiles: Vector[np.float64] = _invert_cdf(nsteps, qmax)
+    NPARTITIONS = 2**exponent
+    Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, qmax)
 
-    @nb.jit(nb.void(nb.float64[::1], nb.uint64[::1]), fastmath=True)
+    @nb.jit(nb.void(nb.float64[::1], nb.uint64[::1]), boundscheck=False, fastmath=True)
     def fill_from_ints(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
         """Fill array with approximately standard normal 64-bit floats from array of 64-bit unsigned integers."""
         nsamples = ints.shape[0]
         for i in range(nsamples):
             n = ints[i]
-            # remove lowest bit, then mask to table index bits
-            idx = (n >> 1) & (npartitions - 1)
-            # use highest 53 bits of unsigned int for float in [0, 1)
-            f = (n >> 11) * 2 ** (-53)
-            # generate uniform sample of absolute value within table segment
-            l, u = quantiles[idx], quantiles[idx + 1]
+            # remove lowest bit and mask to table index bits
+            idx = (n >> 1) & (NPARTITIONS - 1)
+            # use highest 53 bits for float in [0, 1)
+            f = (n >> 11) * 2**-53
+            # generate uniform sample of absolute value within partition
+            l, u = Q[idx], Q[idx + 1]
             abs_z = l + f * (u - l)
             # retrieve sign from lowest bit
             z[i] = -abs_z if n & 1 else abs_z
