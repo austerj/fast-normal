@@ -22,7 +22,7 @@ def _step(seed: int) -> tuple[int, int]:
     return seed, n
 
 
-@nb.jit(nb.uint64(nb.uint64[:], nb.uint64), boundscheck=False)
+@nb.jit(nb.uint64(nb.uint64[::1], nb.uint64), boundscheck=False)
 def _fill_array_ints(array: np.ndarray, seed: int) -> int:
     """Fill array in-place with uniform 64-bit unsigned integers and return latest seed."""
     for i in range(array.shape[0]):
@@ -38,7 +38,7 @@ def to_float(n: int) -> float:
     return nb.float64((n >> 11) * 2 ** (-53))
 
 
-@nb.jit(nb.float64(nb.float64[:], nb.uint64), boundscheck=False)
+@nb.jit(nb.float64(nb.float64[::1], nb.uint64), boundscheck=False)
 def _fill_array_floats(array: np.ndarray, seed: int) -> int:
     """Fill array in-place with uniform 64-bit floats in [0,1) and return latest seed."""
     for i in range(array.shape[0]):
@@ -47,7 +47,7 @@ def _fill_array_floats(array: np.ndarray, seed: int) -> int:
     return seed
 
 
-@nb.jit(nb.uint64[:](nb.uint64, nb.uint64))
+@nb.jit(nb.uint64[::1](nb.uint64, nb.uint64))
 def sample_ints(nsamples: int, seed: int) -> Vector[np.uint64]:
     """Sample an array of uniform 64-bit unsigned integers."""
     array = np.empty(nsamples, dtype=np.uint64)
@@ -55,7 +55,7 @@ def sample_ints(nsamples: int, seed: int) -> Vector[np.uint64]:
     return array
 
 
-@nb.jit(nb.float64[:](nb.uint64, nb.uint64))
+@nb.jit(nb.float64[::1](nb.uint64, nb.uint64))
 def sample_floats(nsamples: int, seed: int) -> Vector[np.float64]:
     """Sample an array of uniform 64-bit floats in [0, 1)."""
     array = np.empty(nsamples, dtype=np.float64)

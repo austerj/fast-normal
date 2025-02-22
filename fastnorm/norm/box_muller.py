@@ -14,7 +14,7 @@ from fastnorm.types import Vector
 
 
 # NOTE: taking uint64 array as input so this can be benchmarked independently of the bit generator
-@nb.jit(nb.void(nb.float64[:], nb.uint64[:]), boundscheck=False, fastmath=True)
+@nb.jit(nb.void(nb.float64[::1], nb.uint64[::1]), boundscheck=False, fastmath=True)
 def _fill_from_ints(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
     """Fill array with standard normal 64-bit floats from array of 64-bit unsigned integers."""
     # assumes integer array length is divisible by 2
@@ -27,7 +27,7 @@ def _fill_from_ints(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
         z[i + 1] = r * math.sin(x)
 
 
-@nb.jit(nb.float64[:](nb.uint64, nb.uint64))
+@nb.jit(nb.float64[::1](nb.uint64, nb.uint64))
 def sample(nsamples: int, seed: int) -> Vector[np.float64]:
     """Sample an array of standard normal 64-bit floats."""
     _nsamples = 2 * math.ceil(nsamples / 2)  # generate extra sample if nsamples is not divisible by 2
