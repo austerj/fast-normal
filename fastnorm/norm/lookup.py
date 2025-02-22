@@ -4,6 +4,8 @@ Generator of approximately standard normal floats via truncated distribution loo
 See {TODO: link to article}
 """
 
+import math
+
 import numba as nb
 import numpy as np
 from scipy import stats
@@ -12,23 +14,36 @@ from fastnorm import splitmix64
 from fastnorm.types import Vector
 
 _DEFAULT_EXPONENT = 10
+_PPF = stats.norm.ppf
+_PDF = stats.norm.pdf
+_CDF = stats.norm.cdf
 
 
-def _invert_cdf(nsteps: int, qmax: float) -> Vector[np.float64]:
-    """Equidistant steps of inverse standard normal CDF (quantiles) from mid-point up to provided max."""
+def _truncated_var(a: float) -> float:
+    """Compute the variance of the standard normal distribution truncated to [-a, a]."""
+    return math.sqrt(1.0 - (2 * a * _PDF(a)) / (2 * _CDF(a) - 1.0))
+
+
+def _invert_cdf(nsteps: int, qmax: float, rescale: bool = True) -> Vector[np.float64]:
+    """Equidistant steps of inverse standard normal CDF from mid-point up to provided max (rescaled to unit variance)."""
     if not (0.5 < qmax < 1.0):
         raise ValueError("Maximal quantile must be strictly between 0.5 and 1.0")
-    return stats.norm.ppf([0.5 + i / (nsteps - 1) * (qmax - 0.5) for i in range(nsteps)])
+    # compute the quantiles across equidistant steps
+    quantiles = _PPF([0.5 + i / (nsteps - 1) * (qmax - 0.5) for i in range(nsteps)])
+    # rescale quantiles to unit variance
+    if rescale:
+        quantiles /= math.sqrt(_truncated_var(quantiles[-1]))
+    return quantiles
 
 
-def _filler_from_ints(qmax: float, exponent: int = _DEFAULT_EXPONENT):
+def _filler_from_ints(qmax: float, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True):
     """Generate filler function for approximately standard normal from uniform 64-bit unsigned integers."""
     if not (0 < exponent <= 10):
         raise ValueError("Exponent must be strictly between 0 and 10")
 
     # precompute lookup table of quantiles
     NPARTITIONS = 2**exponent
-    Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, qmax)
+    Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, qmax, rescale)
 
     @nb.jit(nb.void(nb.float64[::1], nb.uint64[::1]), boundscheck=False, fastmath=True)
     def fill_from_ints(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
@@ -49,9 +64,9 @@ def _filler_from_ints(qmax: float, exponent: int = _DEFAULT_EXPONENT):
     return fill_from_ints
 
 
-def sampler(qmax: float, exponent: int = _DEFAULT_EXPONENT):
+def sampler(qmax: float, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True):
     """Generate sampling function of approximately standard normal 64-bit floats."""
-    fill_from_ints = _filler_from_ints(qmax, exponent)
+    fill_from_ints = _filler_from_ints(qmax, exponent, rescale)
 
     @nb.jit(nb.float64[::1](nb.uint64, nb.uint64))
     def sample(nsamples: int, seed: int) -> Vector[np.float64]:
