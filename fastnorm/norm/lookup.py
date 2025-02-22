@@ -24,7 +24,7 @@ def _filler_from_ints(npartitions: int, qmax: float):
     if npartitions > 2**10:
         raise ValueError("Number of partitions must fit within 10 bits")
 
-    table = _invert_cdf(npartitions + 1, qmax)
+    table: Vector[np.float64] = _invert_cdf(npartitions + 1, qmax)
 
     # NOTE: taking uint64 array as input so this can be benchmarked independently of the bit generator
     @nb.jit(nb.void(nb.float64[::1], nb.uint64[::1]), boundscheck=False, fastmath=True)
@@ -42,9 +42,8 @@ def _filler_from_ints(npartitions: int, qmax: float):
             # generate uniform sample of absolute value within table segment
             l, u = table[idx], table[idx + 1]
             abs_z = l + f * (u - l)
-            # retrieve sign from first bit
-            is_negative = bool(n << (64 - 1))
-            z[i] = (-is_negative + (not is_negative)) * abs_z  # equivalent: -abs_z if is_negative else abs_z
+            # retrieve sign from lowest bit
+            z[i] = -abs_z if n & 1 else abs_z
 
     return fill_from_ints
 
