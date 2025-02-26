@@ -10,13 +10,19 @@ import numba as nb
 import numpy as np
 
 from fastnorm import splitmix64
-from fastnorm.norm.dist import cdfinv, trunc_var
+from fastnorm.norm.dist import cdfinv
 from fastnorm.types import Vector
 
 _DEFAULT_EXPONENT = 10
 
 
-def _invert_cdf(nsteps: int, qmax: float, rescale: bool = True) -> Vector[np.float64]:
+def _mixvar(quantiles: Vector[np.float64]) -> float:
+    """Compute the variance of a symmetric uniform mixture distribution from right quantiles."""
+    w = 1 / (quantiles.shape[0] - 1)  # equal weight for each mixture partition
+    return w / 3 * sum(a * (a + b) + b**2 for a, b in zip(quantiles[:-1], quantiles[1:]))
+
+
+def _invert_cdf(nsteps: int, qmax: float, rescale: bool) -> Vector[np.float64]:
     """Equidistant steps of inverse standard normal CDF from mid-point up to provided max (rescaled to unit variance)."""
     if not (0.5 < qmax < 1.0):
         raise ValueError("Maximal q probability must be strictly between 0.5 and 1.0")
@@ -25,7 +31,7 @@ def _invert_cdf(nsteps: int, qmax: float, rescale: bool = True) -> Vector[np.flo
     quantiles = np.array([cdfinv(q) for q in steps], dtype=np.float64)
     # rescale to unit variance
     if rescale:
-        quantiles /= math.sqrt(trunc_var(quantiles[-1]))
+        quantiles /= math.sqrt(_mixvar(quantiles))
     return quantiles
 
 

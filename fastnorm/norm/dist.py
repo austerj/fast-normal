@@ -19,8 +19,3 @@ def cdfinv(q: float) -> float:
     # fitted polynomials, hence we rely on SciPy here
     # see e.g. https://github.com/jeremybarnes/cephes/blob/master/cprob/ndtri.c
     return math.sqrt(2) * erfinv(2 * q - 1)
-
-
-def trunc_var(a: float) -> float:
-    """Compute the variance of the standard normal distribution truncated to [-a, a]."""
-    return math.sqrt(1.0 - (2 * a * pdf(a)) / (2 * cdf(a) - 1.0))
