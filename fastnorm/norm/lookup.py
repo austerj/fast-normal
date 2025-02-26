@@ -14,25 +14,41 @@ from fastnorm.norm.dist import cdfinv
 from fastnorm.types import Vector
 
 _DEFAULT_EXPONENT = 10
+_HELLINGER_FACTOR = (2 * math.pi) ** (1 / 4)
 
 
-def _mixvar(quantiles: Vector[np.float64]) -> float:
-    """Compute the variance of a symmetric uniform mixture distribution from right quantiles."""
-    w = 1 / (quantiles.shape[0] - 1)  # equal weight for each mixture partition
-    return w / 3 * sum(a * (a + b) + b**2 for a, b in zip(quantiles[:-1], quantiles[1:]))
+def _var(quantiles: Vector[np.float64]) -> float:
+    """Variance of a symmetric uniform mixture distribution from right quantiles."""
+    NPARTITIONS = quantiles.shape[0] - 1
+    return 1 / (3 * NPARTITIONS) * sum(a * (a + b) + b**2 for a, b in zip(quantiles[:-1], quantiles[1:]))
 
 
-def _invert_cdf(nsteps: int, qmax: float, rescale: bool) -> Vector[np.float64]:
+def _invert_cdf(nsteps: int, q: float, rescale: bool) -> Vector[np.float64]:
     """Equidistant steps of inverse standard normal CDF from mid-point up to provided max (rescaled to unit variance)."""
-    if not (0.5 < qmax < 1.0):
+    if not (0.5 < q < 1.0):
         raise ValueError("Maximal q probability must be strictly between 0.5 and 1.0")
     # compute quantiles across equidistant steps
-    steps = [0.5 + i / (nsteps - 1) * (qmax - 0.5) for i in range(nsteps)]
+    steps = [0.5 + i / (nsteps - 1) * (q - 0.5) for i in range(nsteps)]
     quantiles = np.array([cdfinv(q) for q in steps], dtype=np.float64)
     # rescale to unit variance
     if rescale:
-        quantiles /= math.sqrt(_mixvar(quantiles))
+        quantiles /= math.sqrt(_var(quantiles))
     return quantiles
+
+
+def _hellinger_distance(q: float, npartitions: int) -> float:
+    """Hellinger distance between mixture approximation and standard normal distribution."""
+    # compute quantiles and adjustment constant from provided parameters
+    quantiles = _invert_cdf(npartitions + 1, q, rescale=False)
+    c = math.sqrt(_var(quantiles))
+    # compute sum term
+    erfs = [math.erf(quantile / (2 * c)) for quantile in quantiles]
+    numerators = [b - a for a, b in zip(erfs[:-1], erfs[1:])]
+    denominators = [math.sqrt(b - a) for a, b in zip(quantiles[:-1], quantiles[1:])]
+    h_sum = sum(n / d for n, d in zip(numerators, denominators))
+    # finally: compute Hellinger distance
+    h_squared = 1 - _HELLINGER_FACTOR * math.sqrt(c / npartitions) * h_sum
+    return math.sqrt(h_squared)
 
 
 def _filler_from_ints(qmax: float, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True):
