@@ -58,7 +58,7 @@ def _minimize_hellinger(npartitions: int) -> OptimizeResult:
     # 0.9 is well below the optimum even for N=2, so this is a safe lower bound for a minimum
     a, b = 0.9, np.nextafter(1.0, -1)
     cost = lambda q: _hellinger_distance(q, npartitions)
-    result = minimize_scalar(cost, bounds=(a, b), method="bounded")
+    result = minimize_scalar(cost, bounds=(a, b), method="bounded", options={"xatol": 1e-10})
     return typing.cast(OptimizeResult, result)
 
 
