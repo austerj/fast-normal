@@ -12,6 +12,8 @@ from fastnorm import OUT_PATH
 # typed subplots (flattening dimensions of length 1)
 ShareType = bool | typing.Literal["none", "all", "row", "col"]
 
+DEFAULT_FIGSIZE = (7, 3)
+
 
 @typing.overload
 def subplots(
@@ -85,7 +87,7 @@ def subplots(
         sharex=sharex,
         sharey=sharey,
         squeeze=False,
-        figsize=figsize,
+        figsize=DEFAULT_FIGSIZE if figsize is None else figsize,
         **kwargs,
     )
     if squeeze:
