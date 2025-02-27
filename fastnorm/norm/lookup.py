@@ -5,9 +5,11 @@ See {TODO: link to article}
 """
 
 import math
+import typing
 
 import numba as nb
 import numpy as np
+from scipy.optimize import OptimizeResult, minimize_scalar
 
 from fastnorm import splitmix64
 from fastnorm.norm.dist import cdfinv
@@ -38,7 +40,7 @@ def _invert_cdf(nsteps: int, q: float, rescale: bool) -> Vector[np.float64]:
 
 def _hellinger_distance(q: float, npartitions: int) -> float:
     """Hellinger distance between mixture approximation and standard normal distribution."""
-    # compute quantiles and adjustment constant from provided parameters
+    # compute quantiles and variance adjustment from provided parameters
     quantiles = _invert_cdf(npartitions + 1, q, rescale=False)
     c = math.sqrt(_var(quantiles))
     # compute sum term
@@ -51,14 +53,27 @@ def _hellinger_distance(q: float, npartitions: int) -> float:
     return math.sqrt(h_squared)
 
 
-def _filler_from_ints(qmax: float, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True):
-    """Generate filler function for approximately standard normal from uniform 64-bit unsigned integers."""
-    if not (0 < exponent <= 10):
-        raise ValueError("Exponent must be strictly between 0 and 10")
+def _minimize_hellinger(npartitions: int) -> OptimizeResult:
+    """Minimize the Hellinger distance as a function of q for the given number of partitions."""
+    # 0.9 is well below the optimum even for N=2, so this is a safe lower bound for a minimum
+    a, b = 0.9, np.nextafter(1.0, -1)
+    cost = lambda q: _hellinger_distance(q, npartitions)
+    result = minimize_scalar(cost, bounds=(a, b), method="bounded")
+    return typing.cast(OptimizeResult, result)
 
-    # precompute lookup table of quantiles
+
+def _filler_from_ints(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True):
+    """Generate filler function for approximately standard normal 64-bit floats from 64-bit unsigned integers."""
+    if not (0 < exponent <= 10):
+        raise ValueError("Exponent must be positive and at most 10")
+
+    # find q that minimizes Hellinger distance if q is not given explicitly
     NPARTITIONS = 2**exponent
-    Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, qmax, rescale)
+    if q is None:
+        q = typing.cast(float, _minimize_hellinger(NPARTITIONS).x)
+
+    # create lookup table of quantiles
+    Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, q, rescale)
 
     @nb.jit(nb.void(nb.float64[::1], nb.uint64[::1]), boundscheck=False, fastmath=True)
     def fill_from_ints(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
@@ -79,9 +94,9 @@ def _filler_from_ints(qmax: float, exponent: int = _DEFAULT_EXPONENT, rescale: b
     return fill_from_ints
 
 
-def sampler(qmax: float, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True):
+def sampler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True):
     """Generate sampling function of approximately standard normal 64-bit floats."""
-    fill_from_ints = _filler_from_ints(qmax, exponent, rescale)
+    fill_from_ints = _filler_from_ints(q, exponent, rescale)
 
     @nb.jit(nb.float64[::1](nb.uint64, nb.uint64))
     def sample(nsamples: int, seed: int) -> Vector[np.float64]:
