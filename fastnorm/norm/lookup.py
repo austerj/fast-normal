@@ -31,8 +31,8 @@ def _invert_cdf(nsteps: int, q: float, rescale: bool) -> Vector[np.float64]:
     if not (0.5 < q < 1.0):
         raise ValueError("Maximal q probability must be strictly between 0.5 and 1.0")
     # compute quantiles across equidistant steps
-    steps = [0.5 + i / (nsteps - 1) * (q - 0.5) for i in range(nsteps)]
-    quantiles = np.array([cdfinv(q) for q in steps], dtype=np.float64)
+    steps = np.linspace(0.5, q, nsteps, dtype=np.float64)
+    quantiles = cdfinv(steps)
     # rescale to unit variance
     if rescale:
         quantiles /= math.sqrt(_var(quantiles))
