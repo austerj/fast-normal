@@ -6,6 +6,7 @@ See {TODO: link to article}
 
 import math
 import typing
+from logging import warning
 
 import numba as nb
 import numpy as np
@@ -62,10 +63,17 @@ def _minimize_hellinger(npartitions: int) -> OptimizeResult:
     return typing.cast(OptimizeResult, result)
 
 
-def _filler_from_ints(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True):
+def _filler_from_ints(
+    q: float | None = None,
+    exponent: int = _DEFAULT_EXPONENT,
+    rescale: bool = True,
+    warn: bool = True,
+):
     """Generate filler function for approximately standard normal 64-bit floats from 64-bit unsigned integers."""
-    if not (0 < exponent <= 10):
-        raise ValueError("Exponent must be positive and at most 10")
+    if not (0 < exponent <= 32):
+        raise ValueError("Exponent must be positive and at most 32")
+    elif exponent > 10 and warn:
+        warning("Exponents greater than 10 may adversely affect floating point precision")
 
     # find q that minimizes Hellinger distance if q is not given explicitly
     NPARTITIONS = 2**exponent
@@ -75,6 +83,10 @@ def _filler_from_ints(q: float | None = None, exponent: int = _DEFAULT_EXPONENT,
     # create lookup table of quantiles
     Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, q, rescale)
 
+    # usage of bits (at most 53 bits for float <- all significant digits of a 64-bit float)
+    FLOAT_SHIFT = nb.literally(1 + max(exponent, 10))  # 1 bit reserved for sign
+    FLOAT_FACTOR = nb.literally(2 ** -(64 - FLOAT_SHIFT))
+
     @nb.jit(nb.void(nb.float64[::1], nb.uint64[::1]), boundscheck=False, fastmath=True)
     def fill_from_ints(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
         """Fill array with approximately standard normal 64-bit floats from array of 64-bit unsigned integers."""
@@ -83,8 +95,8 @@ def _filler_from_ints(q: float | None = None, exponent: int = _DEFAULT_EXPONENT,
             n = ints[i]
             # remove lowest bit and mask to table index bits
             idx = (n >> 1) & (NPARTITIONS - 1)
-            # use highest 53 bits for float in [0, 1)
-            f = (n >> 11) * 2**-53
+            # use remaining (or 53 at most) bits for float in [0, 1)
+            f = (n >> FLOAT_SHIFT) * FLOAT_FACTOR
             # generate uniform sample of absolute value within partition
             l, u = Q[idx], Q[idx + 1]
             abs_z = l + f * (u - l)
@@ -94,9 +106,9 @@ def _filler_from_ints(q: float | None = None, exponent: int = _DEFAULT_EXPONENT,
     return fill_from_ints
 
 
-def sampler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True):
+def sampler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True, warn: bool = True):
     """Generate sampling function of approximately standard normal 64-bit floats."""
-    fill_from_ints = _filler_from_ints(q, exponent, rescale)
+    fill_from_ints = _filler_from_ints(q, exponent, rescale, warn)
 
     @nb.jit(nb.float64[::1](nb.uint64, nb.uint64))
     def sample(nsamples: int, seed: int) -> Vector[np.float64]:
