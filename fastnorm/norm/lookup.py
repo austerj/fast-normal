@@ -70,8 +70,8 @@ def _filler_from_ints(
     warn: bool = True,
 ):
     """Generate filler function for approximately standard normal 64-bit floats from 64-bit unsigned integers."""
-    if not (0 < exponent <= 32):
-        raise ValueError("Exponent must be positive and at most 32")
+    if not (0 < exponent <= 32) or not isinstance(exponent, int):
+        raise ValueError("Exponent must be a positive integer less than or equal to 32")
     elif exponent > 10 and warn:
         warning("Exponents greater than 10 may adversely affect floating point precision")
 
