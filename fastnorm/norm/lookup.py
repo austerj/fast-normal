@@ -91,17 +91,17 @@ def _filler_from_ints(
     def fill_from_ints(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
         """Fill array with approximately standard normal 64-bit floats from array of 64-bit unsigned integers."""
         nsamples = ints.shape[0]
-        for i in range(nsamples):
-            n = ints[i]
+        for j in range(nsamples):
+            n = ints[j]
             # remove lowest bit and mask to table index bits
-            idx = (n >> 1) & (NPARTITIONS - 1)
+            i = (n >> 1) & (NPARTITIONS - 1)
             # use remaining (or 53 at most) bits for float in [0, 1)
-            f = (n >> FLOAT_SHIFT) * FLOAT_FACTOR
+            a = (n >> FLOAT_SHIFT) * FLOAT_FACTOR
             # generate uniform sample of absolute value within partition
-            l, u = Q[idx], Q[idx + 1]
-            abs_z = l + f * (u - l)
+            l, u = Q[i], Q[i + 1]
+            x = l + a * (u - l)
             # retrieve sign from lowest bit
-            z[i] = -abs_z if n & 1 else abs_z
+            z[j] = -x if n & 1 else x
 
     return fill_from_ints
 
