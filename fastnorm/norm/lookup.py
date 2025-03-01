@@ -1,5 +1,5 @@
 """
-Generator of approximately standard normal floats via truncated distribution lookups.
+Generator of approximately standard normal floats via uniform mixture.
 
 See {TODO: link to article}
 """
@@ -26,23 +26,20 @@ def _var(quantiles: Vector[np.float64]) -> float:
     return 1 / (3 * NPARTITIONS) * sum(a * (a + b) + b**2 for a, b in zip(quantiles[:-1], quantiles[1:]))
 
 
-def _invert_cdf(nsteps: int, q: float, rescale: bool) -> Vector[np.float64]:
-    """Equidistant steps of inverse standard normal CDF from mid-point up to provided max (rescaled to unit variance)."""
+def _invert_cdf(nsteps: int, q: float) -> Vector[np.float64]:
+    """Equidistant steps of inverse standard normal CDF from mid-point up to provided q."""
     if not (0.5 < q < 1.0):
         raise ValueError("Maximal q probability must be strictly between 0.5 and 1.0")
     # compute quantiles across equidistant steps
     steps = np.linspace(0.5, q, nsteps, dtype=np.float64)
     quantiles = cdfinv(steps)
-    # rescale to unit variance
-    if rescale:
-        quantiles /= math.sqrt(_var(quantiles))
     return quantiles
 
 
 def _hellinger_distance(q: float, npartitions: int) -> float:
     """Hellinger distance between mixture approximation and standard normal distribution."""
     # compute quantiles and variance adjustment from provided parameters
-    quantiles = _invert_cdf(npartitions + 1, q, rescale=False)
+    quantiles = _invert_cdf(npartitions + 1, q)
     c = math.sqrt(_var(quantiles))
     # compute sum term
     erfs = [math.erf(quantile / (2 * c)) for quantile in quantiles]
@@ -80,8 +77,10 @@ def _filler_from_ints(
     if q is None:
         q = typing.cast(float, _minimize_hellinger(NPARTITIONS).x)
 
-    # create lookup table of quantiles
-    Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, q, rescale)
+    # create lookup table of quantiles and rescale to unit variance
+    Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, q)
+    if rescale:
+        Q /= math.sqrt(_var(Q))
 
     # usage of bits (at most 53 bits for float <- all significant digits of a 64-bit float)
     FLOAT_SHIFT = nb.literally(1 + max(exponent, 10))  # 1 bit reserved for sign
