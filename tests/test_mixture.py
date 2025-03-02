@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from fastnorm.norm import box_muller, lookup
+from fastnorm.norm import box_muller, mixture
 
 MGF_VALS = [math.exp(i**2 / 2) for i in range(3)]
 
@@ -26,7 +26,7 @@ def estimate_mgf(array: np.ndarray, i: int):
 def test_mgf():
     qmax = 0.99999
     nsamples = 5_000_000
-    samples = lookup.sampler(qmax)(nsamples, seed=0)
+    samples = mixture.sampler(qmax)(nsamples, seed=0)
 
     # passes first and second MGF
     for i, moment in enumerate(MGF_VALS[:2]):
