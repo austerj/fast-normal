@@ -36,6 +36,16 @@ def _invert_cdf(nsteps: int, q: float) -> Vector[np.float64]:
     return quantiles
 
 
+def hist(npartitions: int, q: float) -> tuple[Vector[np.float64], Vector[np.float64]]:
+    """Mixture probability density function as numpy histogram (counts, bins)."""
+    # create scaled right quantiles
+    quantiles = _invert_cdf(npartitions + 1, q)
+    quantiles /= math.sqrt(_var(quantiles))
+    # mirror quantiles (skipping midpoint == 0 from left side)
+    bins = np.hstack([-quantiles[1:][::-1], quantiles])
+    return np.histogram(bins[:-1], bins, density=True)
+
+
 def _hellinger_distance(q: float, npartitions: int) -> float:
     """Hellinger distance between mixture approximation and standard normal distribution."""
     # compute quantiles and variance adjustment from provided parameters
@@ -63,7 +73,6 @@ def _minimize_hellinger(npartitions: int) -> OptimizeResult:
 def _filler_from_ints(
     q: float | None = None,
     exponent: int = _DEFAULT_EXPONENT,
-    rescale: bool = True,
     warn: bool = True,
 ):
     """Generate filler function for approximately standard normal 64-bit floats from 64-bit unsigned integers."""
@@ -79,8 +88,7 @@ def _filler_from_ints(
 
     # create lookup table of quantiles and rescale to unit variance
     Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, q)
-    if rescale:
-        Q /= math.sqrt(_var(Q))
+    Q /= math.sqrt(_var(Q))
 
     # usage of bits (at most 53 bits for float <- all significant digits of a 64-bit float)
     FLOAT_SHIFT = nb.literally(1 + max(exponent, 10))  # 1 bit reserved for sign
@@ -105,9 +113,9 @@ def _filler_from_ints(
     return fill_from_ints
 
 
-def sampler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, rescale: bool = True, warn: bool = True):
+def sampler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, warn: bool = True):
     """Generate sampling function of approximately standard normal 64-bit floats."""
-    fill_from_ints = _filler_from_ints(q, exponent, rescale, warn)
+    fill_from_ints = _filler_from_ints(q, exponent, warn)
 
     @nb.jit(nb.float64[::1](nb.uint64, nb.uint64))
     def sample(nsamples: int, seed: int) -> Vector[np.float64]:
