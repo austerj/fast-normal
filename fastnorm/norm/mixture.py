@@ -11,9 +11,9 @@ from logging import warning
 import numba as nb
 import numpy as np
 from scipy.optimize import OptimizeResult, minimize_scalar
+from scipy.special import erfinv
 
 from fastnorm import splitmix64
-from fastnorm.norm.dist import cdfinv
 from fastnorm.types import Vector
 
 _DEFAULT_EXPONENT = 10
@@ -32,7 +32,10 @@ def _invert_cdf(nsteps: int, q: float) -> Vector[np.float64]:
         raise ValueError("Maximal q probability must be strictly between 0.5 and 1.0")
     # compute quantiles across equidistant steps
     steps = np.linspace(0.5, q, nsteps, dtype=np.float64)
-    quantiles = cdfinv(steps)
+    # inverting the error function is a non-trivial problem and typically solved by evaluating
+    # fitted polynomials, hence we rely on SciPy here
+    # see e.g. https://github.com/jeremybarnes/cephes/blob/master/cprob/ndtri.c
+    quantiles = math.sqrt(2) * erfinv(2 * steps - 1)
     return quantiles
 
 
