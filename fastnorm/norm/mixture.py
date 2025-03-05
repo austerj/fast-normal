@@ -1,5 +1,5 @@
 """
-Generator of approximately standard normal floats via uniform mixture.
+Fast transform for approximately standard normal floats via uniform mixture.
 
 See {TODO: link to article}
 """
@@ -73,11 +73,7 @@ def _minimize_hellinger(npartitions: int) -> OptimizeResult:
     return typing.cast(OptimizeResult, result)
 
 
-def _filler_from_ints(
-    q: float | None = None,
-    exponent: int = _DEFAULT_EXPONENT,
-    warn: bool = True,
-):
+def filler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, warn: bool = True):
     """Generate filler function for approximately standard normal 64-bit floats from 64-bit unsigned integers."""
     if not (0 < exponent <= 32) or not isinstance(exponent, int):
         raise ValueError("Exponent must be a positive integer less than or equal to 32")
@@ -98,7 +94,7 @@ def _filler_from_ints(
     FLOAT_FACTOR = nb.literally(2 ** -(64 - FLOAT_SHIFT))
 
     @nb.jit(nb.void(nb.float64[::1], nb.uint64[::1]), boundscheck=False, fastmath=True)
-    def fill_from_ints(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
+    def fill(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
         """Fill array with approximately standard normal 64-bit floats from array of 64-bit unsigned integers."""
         nsamples = ints.shape[0]
         for j in range(nsamples):
@@ -113,19 +109,19 @@ def _filler_from_ints(
             # retrieve sign from lowest bit
             z[j] = -x if n & 1 else x
 
-    return fill_from_ints
+    return fill
 
 
 def sampler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, warn: bool = True):
     """Generate sampling function of approximately standard normal 64-bit floats."""
-    fill_from_ints = _filler_from_ints(q, exponent, warn)
+    fill = filler(q, exponent, warn)
 
     @nb.jit(nb.float64[::1](nb.uint64, nb.uint64))
     def sample(nsamples: int, seed: int) -> Vector[np.float64]:
         """Sample an array of approximately standard normal 64-bit floats."""
         ints = splitmix64.sample_ints(nsamples, seed)
         samples = np.empty(nsamples, dtype=np.float64)
-        fill_from_ints(samples, ints)
+        fill(samples, ints)
         return samples
 
     return sample
