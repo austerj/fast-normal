@@ -89,25 +89,25 @@ def filler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, warn: bool
     Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, q)
     Q /= math.sqrt(_var(Q))
 
-    # usage of bits (at most 53 bits for float <- all significant digits of a 64-bit float)
+    # using at most 53 bits for float to still get uniform floats in [0,1) for exponents below 10
     FLOAT_SHIFT = nb.literally(1 + max(exponent, 10))  # 1 bit reserved for sign
-    FLOAT_FACTOR = nb.literally(2 ** -(64 - FLOAT_SHIFT))
+    FLOAT_DIVISOR = nb.literally(2 ** (64 - FLOAT_SHIFT))
 
     @nb.jit(nb.void(nb.float64[::1], nb.uint64[::1]), boundscheck=False, fastmath=True)
     def fill(z: Vector[np.float64], ints: Vector[np.uint64]) -> None:
         """Fill array with approximately standard normal 64-bit floats from array of 64-bit unsigned integers."""
         nsamples = ints.shape[0]
         for j in range(nsamples):
-            n = ints[j]
+            U = ints[j]
             # remove lowest bit and mask to table index bits
-            i = (n >> 1) & (NPARTITIONS - 1)
+            i = (U >> 1) & (NPARTITIONS - 1)
             # use remaining (or 53 at most) bits for float in [0, 1)
-            a = (n >> FLOAT_SHIFT) * FLOAT_FACTOR
+            a = (U >> FLOAT_SHIFT) / FLOAT_DIVISOR
             # generate uniform sample of absolute value within partition
             l, u = Q[i], Q[i + 1]
             x = l + a * (u - l)
             # retrieve sign from lowest bit
-            z[j] = -x if n & 1 else x
+            z[j] = -x if U & 1 else x
 
     return fill
 
