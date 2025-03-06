@@ -22,8 +22,14 @@ def _step(seed: int) -> tuple[int, int]:
     return seed, n
 
 
+@nb.jit(nb.float64(nb.uint64))
+def to_float(n: int) -> float:
+    """Get float in [0, 1) from 53 highest bits of a 64-bit unsigned integer."""
+    return (n >> 11) / 2**53
+
+
 @nb.jit(nb.uint64(nb.uint64[::1], nb.uint64), boundscheck=False)
-def _fill_array_ints(array: np.ndarray, seed: int) -> int:
+def fill_ints(array: np.ndarray, seed: int) -> int:
     """Fill array in-place with uniform 64-bit unsigned integers and return latest seed."""
     for i in range(array.shape[0]):
         seed, n = _step(seed)
@@ -31,15 +37,8 @@ def _fill_array_ints(array: np.ndarray, seed: int) -> int:
     return seed
 
 
-@nb.jit(nb.float64(nb.uint64))
-def to_float(n: int) -> float:
-    """Get float in [0, 1) from 53 highest bits of a 64-bit unsigned integer."""
-    # see https://prng.di.unimi.it/ (Generating uniform doubles in the unit interval)
-    return nb.float64((n >> 11) * 2 ** (-53))
-
-
 @nb.jit(nb.float64(nb.float64[::1], nb.uint64), boundscheck=False)
-def _fill_array_floats(array: np.ndarray, seed: int) -> int:
+def fill_floats(array: np.ndarray, seed: int) -> int:
     """Fill array in-place with uniform 64-bit floats in [0,1) and return latest seed."""
     for i in range(array.shape[0]):
         seed, n = _step(seed)
@@ -51,7 +50,7 @@ def _fill_array_floats(array: np.ndarray, seed: int) -> int:
 def sample_ints(nsamples: int, seed: int) -> Vector[np.uint64]:
     """Sample an array of uniform 64-bit unsigned integers."""
     array = np.empty(nsamples, dtype=np.uint64)
-    _fill_array_ints(array, seed)
+    fill_ints(array, seed)
     return array
 
 
@@ -59,5 +58,5 @@ def sample_ints(nsamples: int, seed: int) -> Vector[np.uint64]:
 def sample_floats(nsamples: int, seed: int) -> Vector[np.float64]:
     """Sample an array of uniform 64-bit floats in [0, 1)."""
     array = np.empty(nsamples, dtype=np.float64)
-    _fill_array_floats(array, seed)
+    fill_floats(array, seed)
     return array
