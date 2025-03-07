@@ -76,6 +76,12 @@ def minimize_hellinger(npartitions: int) -> OptimizeResult:
     return typing.cast(OptimizeResult, result)
 
 
+def optimal_q(npartitions: int) -> float:
+    """Retrieve the Hellinger distance minimizing value of q for the given number of partitions."""
+    # use relationship from regression
+    return 1.0 - 1 / (INVERSE_FACTOR * npartitions)
+
+
 def filler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, warn: bool = True):
     """Generate filler function for approximately standard normal 64-bit floats from 64-bit unsigned integers."""
     if not (0 < exponent <= 32) or not isinstance(exponent, int):
@@ -87,7 +93,7 @@ def filler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, warn: bool
     NPARTITIONS = 2**exponent
     if q is None:
         # use q from regression
-        q = typing.cast(float, 1.0 - 1 / (INVERSE_FACTOR * NPARTITIONS))
+        q = typing.cast(float, optimal_q(NPARTITIONS))
 
     # create lookup table of quantiles and rescale to unit variance
     Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, q)
