@@ -86,7 +86,8 @@ def filler(q: float | None = None, exponent: int = _DEFAULT_EXPONENT, warn: bool
     # find q that minimizes Hellinger distance if q is not given explicitly
     NPARTITIONS = 2**exponent
     if q is None:
-        q = typing.cast(float, _minimize_hellinger(NPARTITIONS).x)
+        # use q from regression
+        q = typing.cast(float, 1.0 - 1 / (INVERSE_FACTOR * NPARTITIONS))
 
     # create lookup table of quantiles and rescale to unit variance
     Q: Vector[np.float64] = _invert_cdf(NPARTITIONS + 1, q)
