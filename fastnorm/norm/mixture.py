@@ -18,6 +18,9 @@ from fastnorm.types import Vector
 
 _DEFAULT_EXPONENT = 10
 _HELLINGER_FACTOR = (2 * math.pi) ** (1 / 4)
+# factor in regression q ~ 1 - 1 / (INVERSE_FACTOR * N)
+# see scripts/plots/hellinger.py
+INVERSE_FACTOR = 26.679816319102272
 
 
 def _var(quantiles: Vector[np.float64]) -> float:
@@ -49,7 +52,7 @@ def hist(npartitions: int, q: float) -> tuple[Vector[np.float64], Vector[np.floa
     return np.histogram(bins[:-1], bins, density=True)
 
 
-def _hellinger_distance(q: float, npartitions: int) -> float:
+def hellinger(q: float, npartitions: int) -> float:
     """Hellinger distance between mixture approximation and standard normal distribution."""
     # compute quantiles and variance adjustment from provided parameters
     quantiles = _invert_cdf(npartitions + 1, q)
@@ -64,11 +67,11 @@ def _hellinger_distance(q: float, npartitions: int) -> float:
     return math.sqrt(h_squared)
 
 
-def _minimize_hellinger(npartitions: int) -> OptimizeResult:
+def minimize_hellinger(npartitions: int) -> OptimizeResult:
     """Minimize the Hellinger distance as a function of q for the given number of partitions."""
     # 0.9 is well below the optimum even for N=2, so this is a safe lower bound for a minimum
     a, b = 0.9, np.nextafter(1.0, -1)
-    cost = lambda q: _hellinger_distance(q, npartitions)
+    cost = lambda q: hellinger(q, npartitions)
     result = minimize_scalar(cost, bounds=(a, b), method="bounded", options={"xatol": 1e-10})
     return typing.cast(OptimizeResult, result)
 
