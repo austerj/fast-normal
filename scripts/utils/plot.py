@@ -3,7 +3,6 @@ import os
 import typing
 
 import matplotlib.pyplot as plt
-import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
@@ -124,33 +123,6 @@ def grid(
         **kwargs,
     )
     return f, tuple(ax for axs in axs_ for ax in axs)
-
-
-def density(
-    samples: dict[str, np.ndarray],
-    bins: int,
-    ref: typing.Callable[..., np.ndarray] | None = None,
-    xlim: tuple[float, float] | None = None,
-    ylim: tuple[float, float] | None = None,
-    **kwargs,
-) -> tuple[Figure, tuple[Axes, ...]]:
-    f, axs = grid(len(samples), **kwargs)
-
-    for i, (name, s) in enumerate(samples.items()):
-        axs[i].hist(s, color="C0", bins=bins, density=True, histtype="stepfilled")
-        axs[i].set_title(name)
-        if xlim:
-            axs[i].set_xlim(*xlim)
-        if ylim:
-            axs[i].set_ylim(*ylim)
-        # plot reference density
-        if ref:
-            x_min, x_max = axs[i].get_xlim()
-            x = np.linspace(x_min, x_max, num=100)
-            axs[i].plot(x, ref(x), linestyle=":", color="C3", linewidth=2)
-
-    f.tight_layout()
-    return f, axs
 
 
 def savefig(f: Figure, fname: str) -> None:
