@@ -15,13 +15,13 @@ def _regress(y: np.ndarray) -> float:
     return typing.cast(float, np.linalg.lstsq(regressors.T, y)[0][0])
 
 
-def plot_distance(ns: tuple[int, ...]):
+def plot_distance(ms: tuple[int, ...]):
     f, ax = utils.subplots()
     qs = np.geomspace(0.75, 0.9999999999999, 2000)
-    for i, npartitions in enumerate([2**n for n in ns]):
+    for i, npartitions in enumerate([2**m for m in ms]):
         hdists = np.array([mixture.hellinger(q, npartitions) for q in qs][:-1] + [0.3])
         q_opt = mixture.minimize_hellinger(npartitions).x
-        zorder = len(ns) - i
+        zorder = len(ms) - i
         ax.plot(qs, hdists, label=f"N={npartitions}", color=f"C{i}", zorder=zorder)
         ax.plot(q_opt, mixture.hellinger(q_opt, npartitions), color=f"C{i}", marker="o", zorder=zorder)
         ax.set_ylim(0, 0.3)
@@ -32,10 +32,10 @@ def plot_distance(ns: tuple[int, ...]):
     return f
 
 
-def plot_optimum(nmin: int, nmax: int, nsteps: int = 64):
+def plot_optimum(mmin: int, mmax: int, nsteps: int = 64):
     f, ax = utils.subplots()
     # minimize Hellinger distance for each N
-    npartitions = np.unique(np.geomspace(2**nmin, 2**nmax, num=nsteps, dtype=np.uint64))
+    npartitions = np.unique(np.geomspace(2**mmin, 2**mmax, num=nsteps, dtype=np.uint64))
     qs = [mixture.minimize_hellinger(n).x for n in npartitions]
     log_qs = np.log([1 - q for q in qs])
     # c ~= log(1-q) + log(N)  <=>  q ~= 1 - exp(c) / N
@@ -49,7 +49,7 @@ def plot_optimum(nmin: int, nmax: int, nsteps: int = 64):
     print("q approximation rule:       ", r"$1-\frac{1}{" + str(inverse_factor) + r"N}$")
     ## q approximation rule: $1-\frac{1}{26.67N}$
     # plot optimums and approximation from rule
-    npartitions_ext = np.unique(np.geomspace(2**nmin, 2**32, num=nsteps, dtype=np.uint64))
+    npartitions_ext = np.unique(np.geomspace(2**mmin, 2**32, num=nsteps, dtype=np.uint64))
     ax.plot(npartitions, log_qs, color="C0", label="optimum")
     ax.plot(npartitions_ext, log_qs_approx(npartitions_ext), color="C1", label="approximation", linestyle=":")
     ax.set_xscale("log", base=2)
@@ -60,15 +60,15 @@ def plot_optimum(nmin: int, nmax: int, nsteps: int = 64):
     return f
 
 
-def plot_densities(ns: tuple[int, ...], qs: tuple[float, ...]):
+def plot_densities(ms: tuple[int, ...], qs: tuple[float, ...]):
     xmin, xmax = -3.5, 3.5
     ymin, ymax = 0.0, 0.65
-    f, axs = utils.grid(len(ns) * len(qs), ncols=len(qs))
+    f, axs = utils.grid(len(ms) * len(qs), ncols=len(qs))
     x = np.linspace(xmin, xmax, num=100)
-    for ax, (n, q) in zip(axs, itertools.product(ns, qs)):
-        counts, bins = mixture.hist(2**n, q)
+    for ax, (m, q) in zip(axs, itertools.product(ms, qs)):
+        counts, bins = mixture.hist(2**m, q)
         ax.stairs(counts, bins, color="C0", fill=True)
-        ax.set_title(f"N={2**n}, {q=:.4f}")
+        ax.set_title(f"N={2**m}, {q=:.4f}")
         ax.set_xlim(xmin, xmax)
         ax.set_ylim(ymin, ymax)
         # plot reference density
@@ -77,7 +77,7 @@ def plot_densities(ns: tuple[int, ...], qs: tuple[float, ...]):
         ax.text(
             0.05,
             0.95,
-            f"H={mixture.hellinger(q, 2**n):.3f}",
+            f"H={mixture.hellinger(q, 2**m):.3f}",
             transform=ax.transAxes,
             color="C0",
             ha="left",
@@ -94,10 +94,10 @@ if __name__ == "__main__":
     # plot optimal qs as function of N
     utils.savefig(plot_optimum(1, 17), "hellinger_optimum.pdf")
 
-    ns = (1, 2, 4, 5)
+    ms = (1, 2, 4, 5)
     # plot suboptimal densities
     qs = (0.5001, 0.75, 0.95, 0.9999)
-    utils.savefig(plot_densities(ns, qs), "densities.pdf")
+    utils.savefig(plot_densities(ms, qs), "densities.pdf")
     # plot optimal densities
-    qs_opt = tuple(mixture.minimize_hellinger(n**2).x for n in ns)
-    utils.savefig(plot_densities(ns, qs_opt), "densities_optimized.pdf")
+    qs_opt = tuple(mixture.minimize_hellinger(m**2).x for m in ms)
+    utils.savefig(plot_densities(ms, qs_opt), "densities_optimized.pdf")
