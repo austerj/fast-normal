@@ -1,7 +1,7 @@
 """
 Fast transform for approximately standard normal floats via uniform mixture.
 
-See {TODO: link to article}
+See https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5171995
 """
 
 import math
